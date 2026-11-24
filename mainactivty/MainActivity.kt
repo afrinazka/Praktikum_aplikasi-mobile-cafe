@@ -1,0 +1,1102 @@
+package com.example.kasihsayangcafe_tugaspemogramanmobile
+
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import java.text.NumberFormat
+import java.util.Locale
+
+// WARNA APLIKASI
+private val Cream = Color(0xFFF8F7EF)
+private val Sage = Color(0xFFE8EEE2)
+private val Green = Color(0xFF315540)
+private val Brown = Color(0xFF26352B)
+private val Orange = Color(0xFFC66D43)
+private val Muted = Color(0xFF687568)
+
+// NAVIGASI
+enum class CafeScreen {
+    MENU,
+    MEMBERSHIP,
+    ORDER
+}
+
+class MainActivity : ComponentActivity() {
+
+    private val vm: CafeViewModel by viewModels()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        setContent {
+            MaterialTheme {
+                CafeApp(vm)
+            }
+        }
+    }
+}
+
+// FORMAT RUPIAH
+fun rupiah(value: Int): String {
+    return "Rp" + NumberFormat.getNumberInstance(
+        Locale("id", "ID")
+    ).format(value)
+}
+
+// APLIKASI UTAMA
+@Composable
+fun CafeApp(vm: CafeViewModel) {
+
+    var screen by remember {
+        mutableStateOf(CafeScreen.MENU)
+    }
+
+    Scaffold(
+        containerColor = Cream,
+        bottomBar = {
+            if (screen != CafeScreen.MEMBERSHIP) {
+                NavigationBar(
+                    containerColor = Color.White
+                ) {
+
+                    NavigationBarItem(
+                        selected = screen == CafeScreen.MENU,
+                        onClick = {
+                            screen = CafeScreen.MENU
+                        },
+                        icon = {
+                            Text("☕", fontSize = 20.sp)
+                        },
+                        label = {
+                            Text("Menu")
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = Green,
+                            selectedTextColor = Green,
+                            indicatorColor = Sage
+                        )
+                    )
+
+                    NavigationBarItem(
+                        selected = screen == CafeScreen.ORDER,
+                        onClick = {
+                            screen = CafeScreen.ORDER
+                        },
+                        icon = {
+                            Text("🛍", fontSize = 20.sp)
+                        },
+                        label = {
+                            Text(
+                                if (vm.cartCount > 0)
+                                    "Pesanan (${vm.cartCount})"
+                                else
+                                    "Pesanan"
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = Green,
+                            selectedTextColor = Green,
+                            indicatorColor = Sage
+                        )
+                    )
+                }
+            }
+        }
+    ) { padding ->
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+
+            when (screen) {
+
+                CafeScreen.MENU -> {
+                    MenuScreen(
+                        vm = vm,
+                        onMembership = {
+                            screen = CafeScreen.MEMBERSHIP
+                        }
+                    )
+                }
+
+                CafeScreen.MEMBERSHIP -> {
+                    MembershipScreen(
+                        vm = vm,
+                        onBack = {
+                            screen = CafeScreen.MENU
+                        }
+                    )
+                }
+
+                CafeScreen.ORDER -> {
+                    OrderScreen(
+                        vm = vm
+                    )
+                }
+            }
+        }
+    }
+}
+
+// HEADER APLIKASI
+@Composable
+fun CafeHeader() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 18.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(
+                        Green,
+                        RoundedCornerShape(12.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("✳", color = Color.White, fontSize = 22.sp)
+            }
+
+            Spacer(Modifier.width(8.dp))
+
+            Text(
+                "kasihsayang.",
+                fontSize = 23.sp,
+                fontWeight = FontWeight.Bold,
+                color = Brown
+            )
+        }
+
+        Text(
+            "dibuat dengan hati ♡",
+            fontSize = 10.sp,
+            color = Green,
+            modifier = Modifier
+                .background(Sage, RoundedCornerShape(20.dp))
+                .padding(horizontal = 10.dp, vertical = 7.dp)
+        )
+    }
+}
+
+// HALAMAN 1: MENU
+@Composable
+fun MenuScreen(
+    vm: CafeViewModel,
+    onMembership: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding()
+            .padding(horizontal = 18.dp)
+    ) {
+
+        CafeHeader()
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Sage,
+                            RoundedCornerShape(24.dp)
+                        )
+                        .padding(20.dp)
+                ) {
+                    Text(
+                        "SELAMAT DATANG",
+                        color = Orange,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    Text(
+                        "Yang hangat,untuk harimu.",
+                        fontSize = 27.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Brown
+                    )
+
+                    Spacer(Modifier.height(10.dp))
+
+                    Text(
+                        "Pilih favoritmu, kami siapkan dengan sepenuh hati.",
+                        color = Green,
+                        fontSize = 13.sp
+                    )
+                }
+            }
+
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            Sage,
+                            RoundedCornerShape(16.dp)
+                        )
+                        .clickable {
+                            onMembership()
+                        }
+                        .padding(14.dp)
+                ) {
+                    Text(
+                        text = if (vm.isMember)
+                            "Membership aktif ✓ Lihat membership"
+                        else
+                            "Anda mau mendapat lebih banyak diskon? Daftar membership yuk",
+                        color = Color.Red,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            item {
+                Spacer(Modifier.height(4.dp))
+
+                Text(
+                    "PILIH FAVORITMU",
+                    color = Orange,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(Modifier.height(5.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Menu pilihan",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Brown
+                    )
+
+                    Text(
+                        "16 pilihan",
+                        color = Green,
+                        fontSize = 11.sp,
+                        modifier = Modifier
+                            .background(Sage, RoundedCornerShape(20.dp))
+                            .padding(horizontal = 12.dp, vertical = 7.dp)
+                    )
+                }
+            }
+
+            items(Catalog.items) { item ->
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+
+                        Box(
+                            modifier = Modifier
+                                .size(52.dp)
+                                .background(
+                                    Sage,
+                                    RoundedCornerShape(14.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(item.emoji, fontSize = 27.sp)
+                        }
+
+                        Spacer(Modifier.width(12.dp))
+
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                item.name,
+                                fontWeight = FontWeight.Bold,
+                                color = Brown,
+                                fontSize = 15.sp
+                            )
+
+                            Spacer(Modifier.height(5.dp))
+
+                            Text(
+                                rupiah(item.price),
+                                color = Green,
+                                fontSize = 13.sp
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                vm.addItem(item.id)
+                            },
+                            contentPadding = PaddingValues(
+                                horizontal = 12.dp,
+                                vertical = 5.dp
+                            ),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Green
+                            )
+                        ) {
+                            Text(
+                                "+ Tambah",
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+                Spacer(Modifier.height(12.dp))
+
+                Text(
+                    "Selalu ada ruang untuk yang hangat ♡",
+                    modifier = Modifier.fillMaxWidth(),
+                    textAlign = TextAlign.Center,
+                    color = Muted,
+                    fontSize = 12.sp
+                )
+
+                Spacer(Modifier.height(15.dp))
+            }
+        }
+    }
+}
+
+// HALAMAN 2: MEMBERSHIP
+@Composable
+fun MembershipScreen(
+    vm: CafeViewModel,
+    onBack: () -> Unit
+) {
+
+    var name by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
+
+    val member = vm.member
+
+    val scrollState = rememberScrollState()
+    val coroutineScope = rememberCoroutineScope()
+
+    val emailRequester = remember {
+        BringIntoViewRequester()
+    }
+
+    val phoneRequester = remember {
+        BringIntoViewRequester()
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding()
+            .padding(18.dp)
+    ) {
+
+        CafeHeader()
+
+        Text(
+            "← Kembali ke menu",
+            color = Green,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier
+                .clickable { onBack() }
+                .padding(vertical = 10.dp)
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .background(
+                    Sage,
+                    RoundedCornerShape(24.dp)
+                )
+                .padding(18.dp)
+                .verticalScroll(scrollState)
+
+        ) {
+
+            Text(
+                "LEBIH BANYAK SAYANG ♡",
+                color = Orange,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            Text(
+                "Gabung membership",
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Bold,
+                color = Brown
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            Text(
+                "Membership memberi customer benefit lebih: diskon otomatis untuk pesanan yang memenuhi syarat. Tanpa membership, pesanan tidak mendapat diskon.",
+                fontSize = 13.sp,
+                color = Green
+            )
+
+            Spacer(Modifier.height(16.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Color.White,
+                        RoundedCornerShape(16.dp)
+                    )
+                    .padding(14.dp)
+            ) {
+                Text(
+                    "Subtotal di atas Rp100.000: 4% · di atas Rp200.000: 6% · di atas Rp300.000: 7% · di atas Rp600.000: 10%. Hanya satu diskon tertinggi yang berlaku.",
+                    fontSize = 12.sp,
+                    color = Muted
+                )
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            if (member != null) {
+
+                Text(
+                    "Membership aktif ✓",
+                    color = Green,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                Text("Nama: ${member.name}")
+                Text("Email: ${member.email}")
+                Text("Nomor HP: ${member.phone}")
+
+                Spacer(Modifier.height(12.dp))
+
+                Text(
+                    "Diskon otomatis berlaku untuk pesananmu selama aplikasi berjalan.",
+                    color = Green,
+                    fontSize = 13.sp
+                )
+
+            } else {
+
+                Text(
+                    "Nama lengkap *",
+                    fontWeight = FontWeight.SemiBold,
+                    color = Brown
+                )
+
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Nama kamu") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = cafeFieldColors()
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                Text(
+                    "Email *",
+                    fontWeight = FontWeight.SemiBold,
+                    color = Brown
+                )
+
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .bringIntoViewRequester(emailRequester)
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                coroutineScope.launch {
+                                    emailRequester.bringIntoView()
+                                }
+                            }
+                        },
+                    placeholder = {
+                        Text("nama@email.com")
+                    },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Email
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = cafeFieldColors()
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                Text(
+                    "Nomor HP *",
+                    fontWeight = FontWeight.SemiBold,
+                    color = Brown
+                )
+
+                OutlinedTextField(
+                    value = phone,
+                    onValueChange = { phone = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .bringIntoViewRequester(phoneRequester)
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                coroutineScope.launch {
+                                    phoneRequester.bringIntoView()
+                                }
+                            }
+                        },
+                    placeholder = {
+                        Text("08xxxxxxxxxx")
+                    },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Phone
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = cafeFieldColors()
+                )
+
+                Spacer(Modifier.height(16.dp))
+
+                Button(
+                    onClick = {
+                        when {
+                            name.isBlank() ||
+                                    email.isBlank() ||
+                                    phone.isBlank() -> {
+                                message = "Semua kolom wajib diisi."
+                            }
+
+                            !android.util.Patterns.EMAIL_ADDRESS
+                                .matcher(email.trim()).matches() -> {
+                                message = "Masukkan email yang valid."
+                            }
+
+                            else -> {
+                                vm.registerMember(
+                                    name.trim(),
+                                    email.trim(),
+                                    phone.trim()
+                                )
+                                message = "Pendaftaran berhasil! Membership aktif."
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Green
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Daftar membership")
+                }
+
+                if (message.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+
+                    Text(
+                        message,
+                        color = Green,
+                        fontSize = 13.sp
+                    )
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                Text(
+                    "Pendaftaran ini tidak menggunakan sandi atau login. Status aktif selama aplikasi berjalan.",
+                    color = Muted,
+                    fontSize = 11.sp
+                )
+            }
+        }
+    }
+}
+
+// HALAMAN 3: PESANAN
+@Composable
+fun OrderScreen(vm: CafeViewModel) {
+
+    var customerName by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
+
+    // [BARU] State untuk menampilkan dialog "Pesanan sudah di proses"
+    var showProcessedDialog by remember { mutableStateOf(false) }
+
+    // Mengatur scroll ketika keyboard muncul
+    val coroutineScope = rememberCoroutineScope()
+
+    // Mengatur posisi kolom catatan
+    val notesRequester = remember {
+        BringIntoViewRequester()
+    }
+
+    val summary = vm.priceSummary
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .imePadding()
+            .padding(horizontal = 18.dp)
+    ) {
+
+        CafeHeader()
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+
+            item {
+                Text(
+                    "PESANANMU",
+                    color = Orange,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    "Yang bikin bahagia",
+                    color = Brown,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Text(
+                    "Periksa pilihanmu sebelum mengirim.",
+                    color = Muted,
+                    fontSize = 13.sp
+                )
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(22.dp)
+                ) {
+
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+
+                        if (vm.cartItems.isEmpty()) {
+                            Text(
+                                "Belum ada menu dipilih. Yuk, pilih favoritmu!",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 30.dp),
+                                textAlign = TextAlign.Center,
+                                color = Muted
+                            )
+                        } else {
+
+                            vm.cartItems.forEach { (item, quantity) ->
+
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+
+                                    Column(
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(
+                                            item.name,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Brown
+                                        )
+
+                                        Text(
+                                            "${rupiah(item.price)} x $quantity",
+                                            fontSize = 12.sp,
+                                            color = Muted
+                                        )
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = {
+                                            vm.removeItem(item.id)
+                                        },
+                                        contentPadding = PaddingValues(8.dp)
+                                    ) {
+                                        Text("−")
+                                    }
+
+                                    Text(
+                                        "$quantity",
+                                        modifier = Modifier.padding(horizontal = 10.dp)
+                                    )
+
+                                    OutlinedButton(
+                                        onClick = {
+                                            vm.addItem(item.id)
+                                        },
+                                        contentPadding = PaddingValues(8.dp)
+                                    ) {
+                                        Text("+")
+                                    }
+                                }
+                            }
+                        }
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 14.dp),
+                            color = Color(0xFFE6E6D8)
+                        )
+
+                        PriceRow(
+                            "Total sebelum diskon",
+                            rupiah(summary.total)
+                        )
+
+                        PriceRow(
+                            "Diskon membership",
+                            "${summary.percent}%"
+                        )
+
+                        PriceRow(
+                            "Nominal potongan",
+                            rupiah(summary.discount)
+                        )
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 10.dp),
+                            color = Color(0xFFE6E6D8)
+                        )
+
+                        PriceRow(
+                            "Total akhir",
+                            rupiah(summary.finalPrice),
+                            bold = true
+                        )
+                    }
+                }
+            }
+
+            item {
+                Text(
+                    if (vm.isMember)
+                        "Membership aktif: diskon otomatis diterapkan."
+                    else
+                        "Belum menjadi member: tidak ada diskon.",
+                    color = Muted,
+                    fontSize = 12.sp
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                Text(
+                    "Nama pemesan *",
+                    fontWeight = FontWeight.SemiBold,
+                    color = Brown
+                )
+
+                OutlinedTextField(
+                    value = customerName,
+                    onValueChange = { customerName = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Nama kamu") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = cafeFieldColors()
+                )
+
+                Spacer(Modifier.height(12.dp))
+
+                Text(
+                    "Catatan tambahan",
+                    fontWeight = FontWeight.SemiBold,
+                    color = Brown
+                )
+
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .bringIntoViewRequester(notesRequester)
+                        .onFocusChanged { focusState ->
+                            if (focusState.isFocused) {
+                                coroutineScope.launch {
+                                    notesRequester.bringIntoView()
+                                }
+                            }
+                        },
+                    placeholder = {
+                        Text("Tulis catatan pesanan...")
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = cafeFieldColors()
+                )
+
+                Spacer(Modifier.height(14.dp))
+
+                Button(
+                    onClick = {
+                        message = when {
+                            vm.cartItems.isEmpty() ->
+                                "Pilih setidaknya satu menu."
+
+                            customerName.isBlank() ->
+                                "Nama pemesan wajib diisi."
+
+                            else -> {
+                                vm.clearCart()
+                                customerName = ""
+                                notes = ""
+                                // [BARU] Munculkan dialog pesanan diproses
+                                showProcessedDialog = true
+                                "Pesanan berhasil dicatat! Terima kasih ♡"
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Orange
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Kirim pesanan →")
+                }
+
+                if (message.isNotEmpty()) {
+                    Text(
+                        message,
+                        modifier = Modifier.padding(vertical = 8.dp),
+                        color = Green,
+                        fontSize = 13.sp
+                    )
+                }
+
+                Text(
+                    "Pesanan dicatat. Kafe akan mengonfirmasi ketersediaan dan pengambilan secara terpisah.",
+                    color = Muted,
+                    fontSize = 11.sp
+                )
+
+                Spacer(Modifier.height(20.dp))
+            }
+        }
+    }
+
+    // [BARU] Tampilkan dialog di tengah layar
+    if (showProcessedDialog) {
+        OrderProcessedDialog(
+            onDismiss = { showProcessedDialog = false }
+        )
+    }
+}
+
+// BARIS RINGKASAN HARGA
+@Composable
+fun PriceRow(
+    label: String,
+    value: String,
+    bold: Boolean = false
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 5.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            label,
+            color = if (bold) Green else Brown,
+            fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal
+        )
+
+        Text(
+            value,
+            color = if (bold) Green else Brown,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+// [BARU] DIALOG PESANAN DIPROSES
+@Composable
+fun OrderProcessedDialog(
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            dismissOnBackPress = true,
+            dismissOnClickOutside = false
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White, RoundedCornerShape(20.dp)),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+
+            // Header berwarna
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Green,
+                        RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+                    )
+                    .padding(vertical = 14.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "Terima kasih ♡",
+                    color = Color.White,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            Spacer(Modifier.height(24.dp))
+
+            // Ikon centang
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .background(Sage, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(Green, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "✓",
+                        color = Color.White,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+
+            Text(
+                "Pesanan sudah di proses",
+                color = Brown,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 20.dp)
+            )
+
+            Spacer(Modifier.height(6.dp))
+
+            Text(
+                "Kafe akan mengonfirmasi ketersediaan dan pengambilan secara terpisah.",
+                color = Muted,
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = 24.dp)
+            )
+
+            Spacer(Modifier.height(22.dp))
+
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Orange
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("OK")
+            }
+
+            Spacer(Modifier.height(20.dp))
+        }
+    }
+}
+
+// WARNA INPUT
+@Composable
+fun cafeFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = Green,
+    unfocusedBorderColor = Color(0xFFD9DFD3),
+    focusedContainerColor = Color(0xFFFBFBF7),
+    unfocusedContainerColor = Color(0xFFFBFBF7),
+    focusedTextColor = Brown,
+    unfocusedTextColor = Brown
+)
